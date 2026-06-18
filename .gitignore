@@ -94,3 +94,4 @@ terraform/terraform.tfstate.backup
 terra-key.pub
 terra-key
 .env
+.env.local
