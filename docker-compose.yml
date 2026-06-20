@@ -1,0 +1,54 @@
+services:
+  mongodb:
+    container_name: easyshop-mongodb
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    networks:
+      - easyshop-network
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  migration:
+    container_name: easyshop-migration
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.migration
+    env_file:
+      - .env.local
+    networks:
+      - easyshop-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  app:
+    container_name: easyshop
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    ports:
+      - "3000:3000"
+    networks:
+      - easyshop-network
+    env_file:
+      - .env.local
+    depends_on:
+      migration: 
+        condition: service_completed_successfully
+
+    restart: unless-stopped
+
+
+networks:
+  easyshop-network:
+
+volumes:
+  mongodb_data:
