@@ -25,13 +25,13 @@ spec:
               mountPath: /data/db
           resources:
             requests:
-              memory: "256mi"
+              memory: "256Mi"
               cpu: "250m"
             limits:
-              memory: "512mi"
+              memory: "512Mi"
               cpu: "500m"
 
       volumes:
         - name: mongodb-storage
-          PersistantVolumeClaim:
+          persistentVolumeClaim:
             claimName: mongodb-pvc

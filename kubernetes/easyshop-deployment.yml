@@ -28,17 +28,17 @@ spec:
 
           envFrom:
             - configMapRef:
-              name: easyshop-config
+                name: easyshop-config
             - secretRef:
-              name: easyshop-secrets
+                name: easyshop-secrets
 
           resources:
             requests: 
-              memory: "256mi"
+              memory: "256Mi"
               cpu: "200m"
 
             limits:
-              memory: "512mi"
+              memory: "512Mi"
               cpu: "500m"
           
           startupProbe:
