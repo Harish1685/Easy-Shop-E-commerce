@@ -14,8 +14,10 @@ spec:
 
         imagePullPolicy: Always
 
-        env:
-        - name: MONGODB_URI
-          value: "mongodb://mongodb-service:27017/easyshop"
+        envFrom:
+          - configMapRef:
+              name: easyshop-config
+          - secretRef:
+              name: easyshop-secrets
 
       restartPolicy: OnFailure

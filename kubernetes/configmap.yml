@@ -7,5 +7,5 @@ metadata:
 data:
   MONGODB_URI: "mongodb://mongodb-service:27017/easyshop"
   NODE_ENV: "production"
-  NEXT_PUBLIC_API_URL: "http://54.162.235.67:30000/api"
-  NEXTAUTH_URL: "http://54.162.235.67:30000"
+  NEXT_PUBLIC_API_URL: "http://kumarharish.in/api"
+  NEXTAUTH_URL: "http://kumarharish.in"
