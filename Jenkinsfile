@@ -83,5 +83,34 @@ pipeline{
                 
             }
         }
+        stage("Update Kubernetes Manifests") {
+            steps {
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_PASSWORD'
+                )]){ 
+
+                    sh """
+
+                    git config user.name "Jenkins"
+                    git config user.email "jenkins@example.com"
+
+                    sed -i 's|image: harishkumar1/easyshop-app:.*|image: harishkumar1/easyshop-app:${BUILD_NUMBER}|' kubernetes/easyshop-deployment.yml
+
+                    sed -i 's|image: harishkumar1/easyshop-migration:.*|image: harishkumar1/easyshop-migration:${BUILD_NUMBER}|' kubernetes/migration-job.yml
+
+                    git add .
+
+                    git commit -m "Update images to build ${BUILD_NUMBER}" || echo "No changes to commit"
+
+                    git push https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/Harish1685/Easy-Shop-E-commerce.git HEAD:main
+
+                """
+                }  
+            }
+        }
     }
 }
+    
