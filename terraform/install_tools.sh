@@ -1,44 +1,50 @@
 #!/bin/bash
+set -e
 
-# Update system and install core packages
-sudo apt update
-sudo apt install -y fontconfig openjdk-17-jre 
+# Update
+apt update -y
 
-# Jenkins installation
-sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
-  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
-  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
-sudo apt-get update
-sudo apt-get -y install jenkins
+# Java
+apt install -y fontconfig openjdk-21-jdk
 
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
+# Jenkins
+mkdir -p /etc/apt/keyrings
 
-# Docker installation
-sudo apt-get update
-sudo apt-get install docker.io -y
+wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
 
-# User group permission
-sudo usermod -aG docker $USER
-sudo usermod -aG docker jenkins
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" \
+> /etc/apt/sources.list.d/jenkins.list
 
-sudo systemctl restart docker
-sudo systemctl restart jenkins
+apt update -y
+apt install -y jenkins
 
-# Install dependencies and Trivy
-sudo apt-get install wget apt-transport-https gnupg lsb-release snapd -y
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-sudo apt-get update -y
-sudo apt-get install trivy -y
+# Docker
+apt install -y docker.io
+usermod -aG docker ubuntu
+usermod -aG docker jenkins
 
-# AWS CLI installation
-sudo snap install aws-cli --classic
+systemctl enable docker
+systemctl start docker
 
-# Helm installation
-sudo snap install helm --classic
+systemctl enable jenkins
+systemctl start jenkins
 
-# Kubectl installation
-sudo snap install kubectl --classic
+# Trivy
+curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key \
+| gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb noble main" \
+> /etc/apt/sources.list.d/trivy.list
+
+apt update -y
+apt install -y trivy
+
+# AWS CLI
+snap install aws-cli --classic
+
+# Helm
+snap install helm --classic
+
+# kubectl
+snap install kubectl --classic
