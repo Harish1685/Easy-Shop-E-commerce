@@ -6,6 +6,7 @@ metadata:
   namespace: easyshop
 
 spec: 
+  clusterIP: None
   ports:
     - port: 27017
       targetPort: 27017

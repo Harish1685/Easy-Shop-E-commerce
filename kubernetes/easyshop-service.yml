@@ -6,7 +6,7 @@ metadata:
   namespace: easyshop
 
 spec:
-  type: NodePort
+  type: ClusterIP
 
   selector:
     app: easyshop
@@ -14,4 +14,3 @@ spec:
   ports:
     - port: 80
       targetPort: 3000
-      nodePort: 30000
