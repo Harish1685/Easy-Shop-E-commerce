@@ -5,16 +5,10 @@ metadata:
   name: easyshop-ingress
   namespace: easyshop
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
 spec:
   ingressClassName: nginx
-
-  tls:
-    - hosts:
-        - kumarharish.in
-      secretName: easyshop-tls
-
   rules:
     - host: kumarharish.in
       http:
