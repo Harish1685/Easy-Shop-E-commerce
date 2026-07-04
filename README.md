@@ -2,6 +2,9 @@
 
 A production-grade, full-stack e-commerce application deployed on AWS EKS using modern DevOps practices — Infrastructure as Code, CI/CD pipelines, GitOps, and real-time monitoring.
 ---
+## Architecture Diagram
+<img width="1120" height="742" alt="Screenshot from 2026-07-04 11-48-43" src="https://github.com/user-attachments/assets/e3c80645-401e-449b-9497-410be3d2f8b5" />
+
 
 ## 📖 Table of Contents
 - About the Project
@@ -133,6 +136,8 @@ sudo ./aws/install
 ```bash
 aws --version
 ```
+<img width="1169" height="154" alt="image" src="https://github.com/user-attachments/assets/558e6e96-752e-4023-9eb5-bd4e2184be42" />
+
 
 ### Configure AWS Credentials
 
@@ -149,10 +154,14 @@ You'll be asked for four values:
 | Default region | `eu-west-1` |
 | Default output format | `json` |
 
+<img width="1346" height="207" alt="image" src="https://github.com/user-attachments/assets/e8f5dbac-9556-4aa0-bf99-60ed8b1ea0fd" />
+
+
 > [!NOTE]
 > To generate an Access Key:
 >
 > **AWS Console → IAM → Users → Your User → Security Credentials → Create Access Key**
+<img width="1761" height="832" alt="image" src="https://github.com/user-attachments/assets/947b02cc-96dd-43cb-9385-af3785cf68bc" />
 
 ---
 
@@ -196,6 +205,8 @@ We also use a **DynamoDB table** for state locking so multiple people can't run 
 - Keep everything else at the default settings
 - Click **Create Bucket**
 
+<img width="1386" height="742" alt="image" src="https://github.com/user-attachments/assets/9d6a3df4-af1a-460d-a59b-664073158410" />
+
 #### DynamoDB Table
 
 - Go to **DynamoDB → Create Table**
@@ -203,6 +214,7 @@ We also use a **DynamoDB table** for state locking so multiple people can't run 
 - **Partition key:** `LockID` *(Type: String)*
 - **Billing mode:** On-demand
 - Click **Create Table**
+<img width="1395" height="525" alt="image" src="https://github.com/user-attachments/assets/f5bd6d48-77b5-46fb-b67b-a07bf278bea1" />
 
 > [!IMPORTANT]
 > This is a one-time setup. These two resources stay forever and are never managed by Terraform itself.
@@ -364,6 +376,8 @@ Go to:
 ```text
 http://<ec2_public_ip>:8080
 ```
+<img width="1281" height="913" alt="image" src="https://github.com/user-attachments/assets/5de47e44-873a-45c4-a8e0-e5e9e7a5054c" />
+
 
 Retrieve the initial admin password:
 
@@ -371,6 +385,7 @@ Retrieve the initial admin password:
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
 ### Paste this into Jenkins, then click **Install Suggested Plugins** and create your admin user.
+<img width="1023" height="598" alt="image" src="https://github.com/user-attachments/assets/12eba8fb-4629-4307-85c7-69e02230804b" />
 
 ---
 
@@ -384,6 +399,9 @@ Search and install:
 
 - ✅ Docker Pipeline → Lets Jenkins build and push Docker images
 - ✅ Pipeline View → Better UI for viewing pipeline stages
+
+<img width="1376" height="745" alt="image" src="https://github.com/user-attachments/assets/be5b2e02-1daa-40b5-b38a-7576827b261b" />
+
 
 ---
 
@@ -417,6 +435,7 @@ Go to:
 
 > [!NOTE]
 > These credential IDs must exactly match the IDs referenced in your Jenkins pipeline.
+<img width="1818" height="393" alt="image" src="https://github.com/user-attachments/assets/129c92d6-cfe8-4a16-9fd8-07fbb4939ee1" />
 
 ---
 
@@ -490,6 +509,7 @@ Push to Docker Hub
 ↓
 Image Updation
 ```
+<img width="1471" height="902" alt="Screenshot from 2026-06-21 23-43-56" src="https://github.com/user-attachments/assets/152d41a2-3dee-4d96-bd92-0c7776d66002" />
 
 Verify your images appear on Docker Hub.
 
@@ -632,6 +652,8 @@ Click **New App** and configure your GitOps repository to begin continuous deplo
 Click **Create**.
 
 ArgoCD will start syncing immediately.
+<img width="1840" height="954" alt="argo_easyshop" src="https://github.com/user-attachments/assets/0569dc5a-61c1-42f2-99b9-7cc1102ebb66" />
+
 
 ---
 
@@ -736,6 +758,9 @@ Log in to your domain registrar and create the following DNS record:
 | **Value** | `ab12cd34.us-east-1.elb.amazonaws.com` *(your EXTERNAL-IP)* |
 | **TTL** | 300 |
 
+<img width="1260" height="444" alt="image" src="https://github.com/user-attachments/assets/89c3b57c-b5aa-4cdc-8035-9393c850cd31" />
+
+
 DNS propagation usually takes **2–10 minutes**.
 
 Verify DNS:
@@ -770,6 +795,7 @@ Open your application:
 ```text
 http://kumarharish.in
 ```
+
 
 Your EasyShop application should now load successfully. 🎉
 
@@ -842,6 +868,8 @@ Open:
 ```text
 http://<EC2_PUBLIC_IP>:3000
 ```
+<img width="1419" height="768" alt="brave_screenshot (2)" src="https://github.com/user-attachments/assets/a0c8c4d2-06a4-4cd7-a623-57995642f9c0" />
+
 
 ### Login Credentials
 
@@ -869,6 +897,9 @@ Navigate to:
 | Kubernetes / Nodes | Node-level CPU and memory metrics |
 | Node Exporter | Detailed OS-level metrics |
 
+<img width="1825" height="960" alt="brave_screenshot (3)" src="https://github.com/user-attachments/assets/2a2ea198-4487-4313-b1ad-92844af1bbfd" />
+
+
 ---
 
 ## 5.4 Import a Custom Dashboard
@@ -895,12 +926,15 @@ Useful dashboards:
 ### Example — Import Dashboard 315
 
 1. Open **Dashboards → Import**
-2. Enter **315**
+2. Enter **1680**
 3. Click **Load**
 4. Select **Prometheus**
 5. Click **Import**
 
 You'll immediately see live CPU, memory, and pod metrics from your EKS cluster.
+
+<img width="1849" height="960" alt="easyshop-dashboard" src="https://github.com/user-attachments/assets/226c880f-187a-4870-9beb-ee38e0e3ff58" />
+
 
 ---
 
@@ -1009,6 +1043,6 @@ As someone just starting out in DevOps, deploying a production-grade Kubernetes 
 
 If you're reading this and following along just stick with it. Every error message is just a step closer to understanding how the whole thing actually works.
 
-Deployed by Kumar Harish
+Deployed by Harish Kumar
 
 DevOps Engineer · AWS · Kubernetes · Infrastructure
