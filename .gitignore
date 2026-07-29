@@ -95,3 +95,6 @@ terra-key.pub
 terra-key
 .env
 .env.local
+
+# Kubernetes Secrets
+k8s/secret.yaml
