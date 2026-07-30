@@ -97,4 +97,4 @@ terra-key
 .env.local
 
 # Kubernetes Secrets
-k8s/secret.yaml
+kubernetes/secret.yaml
