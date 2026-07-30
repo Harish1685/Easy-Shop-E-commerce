@@ -8,7 +8,6 @@ This guide provides step-by-step instructions for setting up a Jenkins CI/CD pip
 - [Jenkins Configuration](#jenkins-configuration)
 - [GitHub Webhook Setup](#github-webhook-setup)
 - [Pipeline Configuration](#pipeline-configuration)
-- [Shared Library Integration](#shared-library-integration)
 
 ## Prerequisites
 
@@ -133,18 +132,8 @@ Install these plugins via "Manage Jenkins" > "Manage Plugins" > "Available":
    - Branch: */main
    - Script Path: Jenkinsfile
 
-### 2. Shared Library Integration
 
-Our pipeline uses a shared library from: [EasyShop Jenkins Shared Library](https://github.com/iemafzalhassan/EasyShop-jenkins-shared-lib)
-
-1. Go to "Manage Jenkins" > "Configure System"
-2. Under "Global Pipeline Libraries":
-   - Name: easyshop-shared-lib
-   - Default version: main
-   - Modern SCM: GitHub
-   - Repository URL: https://github.com/iemafzalhassan/EasyShop-jenkins-shared-lib.git
-
-### 3. Pipeline Stages
+### 2. Pipeline Stages
 
 Our pipeline includes these stages:
 1. Checkout: Cleans workspace and checks out code
@@ -159,11 +148,3 @@ Important log locations:
 - Jenkins logs: `/var/log/jenkins/jenkins.log`
 - Docker logs: `docker logs container-name`
 - Build logs: Available in Jenkins job console output
-
-
-## References
-
-- [Jenkins Documentation](https://www.jenkins.io/doc/)
-- [Docker Documentation](https://docs.docker.com/)
-- [GitHub Webhooks Guide](https://docs.github.com/en/webhooks)
-- [EasyShop Shared Library](https://github.com/iemafzalhassan/EasyShop-jenkins-shared-lib)

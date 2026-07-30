@@ -4,7 +4,6 @@ pipeline{
     environment{
         DOCKER_IMAGE_NAME = "harishkumar1/easyshop-app"
         DOCKER_MIGRATION_IMAGE_NAME = "harishkumar1/easyshop-migration"
-        BUILD_NUMBER = "${BUILD_NUMBER}"
     }
     stages {
         stage("cleanup WorkSpace"){
@@ -39,11 +38,7 @@ pipeline{
                 }
             }
         }
-        stage("Run Tests"){
-            steps{
-                echo "Testing Done .... "
-            }
-        }
+
         stage("Trivy Scan"){
             steps{
                 sh "trivy fs ."
@@ -112,5 +107,45 @@ pipeline{
             }
         }
     }
+
+    post {
+        success {
+            mail(
+                to: 'kumarharish01685@gmail.com',
+                subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                Hello Harish,
+
+                Your Jenkins pipeline completed successfully.
+
+                Job: ${env.JOB_NAME}
+                Build Number: ${env.BUILD_NUMBER}
+
+                """
+            )
+        }
+
+        failure {
+            mail(
+                to: 'kumarharish01685@gmail.com',
+                subject: "FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                Hello Harish,
+
+                Your Jenkins pipeline failed.
+
+                Job: ${env.JOB_NAME}
+                Build Number: ${env.BUILD_NUMBER}
+                
+            """
+            )
+        }
+    }
 }
+        
+
+    
+
+    
+
     
