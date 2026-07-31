@@ -41,7 +41,7 @@ pipeline{
 
         stage("Trivy Scan"){
             steps{
-                sh "trivy fs ."
+                sh "trivy image ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
             }
         }
         stage("Push Docker Images"){
