@@ -3,7 +3,8 @@
 A production-grade, full-stack e-commerce application deployed on AWS EKS using modern DevOps practices — Infrastructure as Code, CI/CD pipelines, GitOps, and real-time monitoring.
 ---
 ## Architecture Diagram
-<img width="1120" height="742" alt="Screenshot from 2026-07-04 11-48-43" src="https://github.com/user-attachments/assets/e3c80645-401e-449b-9497-410be3d2f8b5" />
+<img width="1536" height="1024" alt="architecture_easy_shop" src="https://github.com/user-attachments/assets/e790c4f3-fc12-4921-ab80-65774286df1c" />
+
 
 
 ## 📖 Table of Contents
