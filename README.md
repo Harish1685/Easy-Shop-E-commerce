@@ -1,4 +1,4 @@
-# 🛍️ EasyShop — Cloud-Native E-Commerce Platform
+# 🛍️ EasyShop — DevOps Deployment Platform for a Next.js E-Commerce Application
 
 A production-grade, full-stack e-commerce application deployed on AWS EKS using modern DevOps practices — Infrastructure as Code, CI/CD pipelines, GitOps, and real-time monitoring.
 ---
@@ -8,7 +8,6 @@ A production-grade, full-stack e-commerce application deployed on AWS EKS using 
 
 ## 📖 Table of Contents
 - About the Project
-- Features
 - Architecture
 - Tech Stack
 - Project Structure
@@ -16,47 +15,32 @@ A production-grade, full-stack e-commerce application deployed on AWS EKS using 
 - Step 1 — Provision Infrastructure with Terraform
 - Step 2 — Configure Jenkins (CI)
 - Step 3 — Set Up ArgoCD (CD / GitOps)
-- Step 4 — Install Nginx Ingress Controller
+- Step 4 — Configure NGINX Ingress & HTTPS
 - Step 5 — Set Up Monitoring (Prometheus + Grafana)
 - Verifying the Deployment
 ---
 
 ## 📌 About the Project
 
-EasyShop is a modern, full-stack e-commerce platform built with Next.js 14, TypeScript, and MongoDB. What makes this project special isn't just the application,it's the entire cloud-native infrastructure built around it.
+EasyShop is a full-stack Next.js e-commerce application that I containerized and deployed on AWS EKS using modern DevOps practices. The focus of this project is designing and automating the cloud infrastructure, CI/CD pipeline, GitOps workflow, and monitoring stack rather than developing the application itself.
 
 Every piece of AWS infrastructure is written as code (Terraform), the application is automatically built and pushed to Docker Hub whenever code changes (Jenkins CI), and it's automatically deployed to Kubernetes whenever the manifests change (ArgoCD GitOps). On top of that, the entire cluster is monitored with Prometheus and Grafana.
 
-## ✨ Features
-
-| Feature | Description |
-|---------|-------------|
-| 🎨 **Modern UI** | Responsive design with dark/light mode support using Tailwind CSS |
-| 🔐 **Authentication** | Secure JWT-based login and session management |
-| 🛒 **Cart Management** | Real-time cart updates powered by Redux |
-| 🔍 **Search & Filter** | Advanced product search and category filtering |
-| 💳 **Checkout** | Smooth, secure checkout process |
-| 📱 **Mobile-First** | Works great on phones, tablets, and desktops |
-| 👤 **User Profiles** | Order history and account management |
+> **Note**
+>
+> The application itself is an existing Next.js e-commerce application.
+> The primary focus of this project is designing and implementing the DevOps platform around it, including infrastructure provisioning with Terraform, containerization, CI/CD with Jenkins, GitOps using ArgoCD, Kubernetes deployment, ingress, persistent storage, and monitoring.
 
 ### Application Tiers
-#### 1. Presentation Tier (Frontend)
 
-- Next.js 14 React components
-- Redux for global state management
-- Tailwind CSS for styling
-- Server-side rendering (SSR)
-##### 2. Application Tier (Backend)
+**Presentation Tier**
+- Next.js Frontend
 
-- Next.js API Routes
-- JWT authentication & authorization
-- Request validation and error handling
-- Business logic layer
-#### 3. Data Tier (Database)
+**Application Tier**
+- Next.js API
 
-- MongoDB deployed as a Kubernetes StatefulSet
-- Persistent data stored on AWS EBS gp3 volumes
-- Mongoose ODM for schema validation
+**Data Tier**
+- MongoDB StatefulSet with persistent EBS storage
 
 ---
 
@@ -109,6 +93,14 @@ You also need:
 - A Docker Hub account (free at hub.docker.com)
 - A GitHub account
 - A domain name (this project uses kumarharish.in)
+
+# 🔐 Security Considerations
+
+- Sensitive Kubernetes Secrets are intentionally excluded from version control.
+- The repository provides a `secret.example.yml` template instead of real secrets.
+- Before deploying the application, create the Kubernetes Secret using your own values.
+- Container images are scanned using Trivy before deployment.
+- Jenkins credentials are securely stored using the Jenkins Credentials Manager.
 
 ---
 # 🚀 Step 1 – Provision Infrastructure with Terraform
@@ -439,7 +431,86 @@ Go to:
 
 ---
 
-## 2.7 Create the Jenkins Pipeline
+## 2.7 Configure Email Notifications
+
+Jenkins can automatically send an email whenever a pipeline succeeds or fails.
+
+### Install the Plugin
+
+Go to:
+
+**Manage Jenkins → Plugins → Available Plugins**
+
+Install:
+
+- **Email Extension Plugin (Email Extension)**
+
+Restart Jenkins if prompted.
+
+---
+
+### Configure SMTP
+
+Go to:
+
+**Manage Jenkins → System**
+
+Scroll down to:
+
+**Extended E-mail Notification**
+
+Configure the following values.
+
+| Field | Value |
+|--------|-------|
+| SMTP Server | `smtp.gmail.com` |
+| SMTP Port | `465` |
+| Use SSL | ✅ Enabled |
+| SMTP Authentication | ✅ Enabled |
+| Username | Your Gmail address |
+| Password | Gmail App Password |
+
+> [!IMPORTANT]
+> Do **not** use your normal Gmail password.
+> Generate a **Google App Password** from your Google Account and use it instead.
+
+---
+
+### Generate a Gmail App Password
+
+1. Open your Google Account.
+2. Go to **Security**.
+3. Enable **2-Step Verification**.
+4. Search for **App Passwords**.
+5. Create a new App Password for **Mail**.
+6. Copy the generated 16-character password.
+
+---
+
+### Test the Configuration
+
+After saving the SMTP settings:
+
+Go to:
+
+**Manage Jenkins → System**
+
+Click:
+
+**Test configuration by sending test e-mail**
+
+If the configuration is correct, Jenkins will send a test email successfully.
+
+---
+
+### Pipeline Integration
+
+Once configured, the pipeline automatically sends:
+
+- ✅ Success notification when the pipeline completes successfully.
+- ❌ Failure notification when any stage fails.
+
+## 2.8 Create the Jenkins Pipeline
 
 1. Click **New Item**
 2. Name it **EasyShop**
@@ -473,7 +544,7 @@ Click **Save**.
 
 ---
 
-## 2.8 Set Up GitHub Webhook
+## 2.9 Set Up GitHub Webhook
 
 Go to your GitHub repository:
 
@@ -491,7 +562,7 @@ You'll see a green tick if the webhook is configured correctly.
 
 ---
 
-## 2.9 Test the Pipeline
+## 2.10 Test the Pipeline
 
 1. Open your Jenkins job.
 2. Click **Build Now**.
@@ -499,15 +570,18 @@ You'll see a green tick if the webhook is configured correctly.
 The pipeline should execute:
 
 ```text
-Checkout
+Checkout Repository
 ↓
-Build Docker Image
+Build Docker Images
 ↓
-Scan the image
+Trivy Image Scan
 ↓
-Push to Docker Hub
+Push Images to DockerHub
 ↓
-Image Updation
+Update Kubernetes Manifests
+↓
+Email Notification
+
 ```
 <img width="1471" height="902" alt="Screenshot from 2026-06-21 23-43-56" src="https://github.com/user-attachments/assets/152d41a2-3dee-4d96-bd92-0c7776d66002" />
 
@@ -521,9 +595,9 @@ https://hub.docker.com/repositories/<your-username>
 
 # 🚀 Step 3 — Install ArgoCD (CD / GitOps)
 
-ArgoCD continuously watches your GitOps repository for Kubernetes manifest changes.
+Jenkins updates the Kubernetes manifests stored in the GitOps repository.
 
-Whenever Jenkins updates the image tag, ArgoCD automatically detects the change and deploys the latest version to your EKS cluster.
+ArgoCD continuously watches that repository and synchronizes those changes to the cluster.
 
 ---
 
@@ -624,7 +698,41 @@ Login credentials:
 
 ---
 
-## 3.4 Deploy EasyShop via ArgoCD
+## 3.4 Create Kubernetes Secrets
+
+The application requires Kubernetes Secrets for authentication.
+
+For security reasons, real secrets are **not stored in this repository**. Instead, a `kubernetes/secrets.example.yml` template is provided.
+
+Create your own Kubernetes Secret before deploying the application.
+
+### Create using kubectl
+
+```bash
+kubectl create secret generic easyshop-secrets \
+  --from-literal=NEXTAUTH_SECRET="<YOUR_NEXTAUTH_SECRET>" \
+  --from-literal=JWT_SECRET="<YOUR_JWT_SECRET>" \
+  -n easyshop
+```
+
+### Verify
+
+```bash
+kubectl get secrets -n easyshop
+```
+
+Expected output:
+
+```text
+easyshop-secrets
+```
+
+> [!NOTE]
+> The application deployment references this Secret. If it doesn't exist, the application pods will fail to start.
+
+---
+
+## 3.5 Deploy EasyShop via ArgoCD
 
 Click **New App** and configure your GitOps repository to begin continuous deployment.
 
@@ -688,13 +796,15 @@ STORAGECLASS should show gp3 ✅
 
 ---
 
-# 🌐 Step 4 — Install NGINX Ingress Controller
+# 🌐 Step 4 — Configure NGINX Ingress & HTTPS
 
-### What NGINX Ingress Does
+### What This Step Does
 
-Your application runs inside Kubernetes but has no way for internet users to reach it.
+This step exposes the EasyShop application to the internet using the NGINX Ingress Controller.
 
-The **NGINX Ingress Controller** acts as the traffic entry point and routes incoming requests to your application inside the cluster.
+An AWS Load Balancer is automatically provisioned to receive external traffic, while the Ingress Controller routes requests to the correct Kubernetes Service inside the cluster.
+
+To secure communication, cert-manager automatically requests and renews TLS certificates from Let's Encrypt, allowing the application to be accessed securely over HTTPS.
 
 ---
 
@@ -731,7 +841,67 @@ All pods should show Running ✅
 
 ---
 
-## 4.2 Get the Load Balancer Address
+## 4.2 Install cert-manager
+
+cert-manager automates the process of requesting, issuing, and renewing TLS certificates for Kubernetes applications.
+
+### Add the Helm Repository
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+
+helm repo update
+```
+
+### Install cert-manager
+
+```bash
+helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+```
+
+### Verify Installation
+
+```bash
+kubectl get pods -n cert-manager
+```
+
+Expected output:
+
+```text
+All pods should show Running ✅
+```
+---
+
+## 4.3 Configure Let's Encrypt
+
+A ClusterIssuer defines how cert-manager obtains certificates from Let's Encrypt. It is a cluster-wide resource that can be reused by multiple applications.
+
+Create the ClusterIssuer that cert-manager will use to request TLS certificates from Let's Encrypt.
+
+```bash
+kubectl apply -f kubernetes/cluster-issuer.yml
+```
+
+Verify the ClusterIssuer:
+
+```bash
+kubectl get clusterissuer
+```
+
+Expected output:
+
+```text
+NAME                READY
+letsencrypt-prod    True
+```
+
+---
+
+
+## 4.4 Get the Load Balancer Address
 
 ```bash
 kubectl get svc -n ingress-nginx
@@ -748,7 +918,7 @@ Copy the **EXTERNAL-IP**.
 
 ---
 
-## 4.3 Point Your Domain to the Load Balancer
+## 4.5 Configure DNS
 
 Log in to your domain registrar and create the following DNS record:
 
@@ -777,27 +947,52 @@ Should resolve to an AWS IP ✅
 
 ---
 
-## 4.4 Verify the Ingress
+## 4.6 Enable HTTPS
+
+Apply the Ingress manifest.
 
 ```bash
-kubectl get ingress -n easyshop
+kubectl apply -f kubernetes/ingress.yml
+```
+
+The Ingress references the `letsencrypt-prod` ClusterIssuer created earlier.
+
+cert-manager will automatically:
+
+- Request a TLS certificate from Let's Encrypt.
+- Store the certificate as the `easyshop-tls` Kubernetes Secret.
+- Configure the NGINX Ingress Controller to terminate HTTPS traffic.
+
+### 4.7 Verify the Certificate
+
+Check that the certificate has been issued successfully.
+
+```bash
+kubectl get certificate -n easyshop
 ```
 
 Expected output:
 
 ```text
-NAME                 CLASS   HOSTS             ADDRESS     PORTS
-easyshop-ingress     nginx   kumarharish.in    <LB IP>     80
+READY   True
 ```
 
-Open your application:
+Verify that the TLS Secret has been created.
+
+```bash
+kubectl get secret easyshop-tls -n easyshop
+```
+
+Finally, open your application:
 
 ```text
-http://kumarharish.in
+https://kumarharish.in
 ```
 
+Your browser should display a secure HTTPS connection.
 
-Your EasyShop application should now load successfully. 🎉
+> [!NOTE]
+> The NGINX Ingress Controller and cert-manager are installed once as cluster-level components. After the platform is configured, ArgoCD manages the EasyShop application resources automatically through GitOps.
 
 ---
 
