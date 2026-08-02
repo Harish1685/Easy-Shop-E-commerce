@@ -147,7 +147,8 @@ You'll be asked for four values:
 | Default region | `eu-west-1` |
 | Default output format | `json` |
 
-<img width="1346" height="207" alt="image" src="https://github.com/user-attachments/assets/e8f5dbac-9556-4aa0-bf99-60ed8b1ea0fd" />
+<img width="1172" height="382" alt="Screenshot from 2026-08-02 12-20-14" src="https://github.com/user-attachments/assets/97709643-a7dd-4824-bf2e-70f3a41ddd2e" />
+
 
 
 > [!NOTE]
@@ -240,7 +241,7 @@ This creates two files:
 Fix the permissions:
 
 ```bash
-chmod 400 easyshop-key
+chmod 400 terra-key
 ```
 
 ---
@@ -423,7 +424,7 @@ Go to:
 | **Kind** | Username with password |
 | **Username** | Your Docker Hub username |
 | **Password** | Docker Hub Personal Access Token |
-| **ID** | `dockerhub-credentials` |
+| **ID** | `docker-hub-credentials` |
 | **Description** | Docker Hub access |
 
 > [!NOTE]
@@ -560,6 +561,9 @@ Go to your GitHub repository:
 Click **Add webhook**.
 
 You'll see a green tick if the webhook is configured correctly.
+
+<img width="1265" height="325" alt="image" src="https://github.com/user-attachments/assets/14fd3fa8-5bf6-460d-ac89-43bf7ca8a68f" />
+
 
 ---
 
