@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: migration
-        image: harishkumar1/easyshop-migration:9
+        image: harishkumar1/easyshop-migration:4
 
         imagePullPolicy: Always
 

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: easyshop
-          image: harishkumar1/easyshop-app:9
+          image: harishkumar1/easyshop-app:4
           imagePullPolicy: Always
 
           ports:
