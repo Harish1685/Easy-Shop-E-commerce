@@ -96,5 +96,10 @@ terra-key
 .env
 .env.local
 
-# Kubernetes Secrets
+# Kubernetes Secrets - real values must never be committed
 kubernetes/secret.yaml
+kubernetes/secret.yml
+kubernetes/secrets.yaml
+kubernetes/secrets.yml
+secrets.yml
+secrets.yaml
