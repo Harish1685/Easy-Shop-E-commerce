@@ -4,6 +4,11 @@ kind: Job
 metadata:
   name: db-migration
   namespace: easyshop
+  annotations:
+    # Jobs are immutable in Kubernetes - ArgoCD can't update this in place.
+    # These hooks make ArgoCD delete the old Job and run a fresh one on every sync.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 
 spec:
   template:
