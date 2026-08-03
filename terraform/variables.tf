@@ -1,5 +1,5 @@
 variable "instance_type" {
   default = "c7i-flex.large"
-  description = "AWS region where resources will be provisioned"
+  description = "EC2 instance type for the Jenkins server"
 }
 
