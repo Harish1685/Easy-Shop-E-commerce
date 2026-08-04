@@ -609,7 +609,8 @@ Update Kubernetes Manifests
 Email Notification
 
 ```
-<img width="1471" height="902" alt="Screenshot from 2026-06-21 23-43-56" src="https://github.com/user-attachments/assets/152d41a2-3dee-4d96-bd92-0c7776d66002" />
+<img width="1532" height="465" alt="final_pipeline" src="https://github.com/user-attachments/assets/4714f20b-9c68-42c4-b6cc-80e7e701ca88" />
+
 
 Verify your images appear on Docker Hub.
 
@@ -978,7 +979,8 @@ Click **New App** and configure your GitOps repository to begin continuous deplo
 Click **Create**.
 
 ArgoCD will start syncing immediately.
-<img width="1840" height="954" alt="argo_easyshop" src="https://github.com/user-attachments/assets/0569dc5a-61c1-42f2-99b9-7cc1102ebb66" />
+<img width="1835" height="954" alt="final_argo" src="https://github.com/user-attachments/assets/3fb0611f-1dac-49ca-919c-438306a16d32" />
+
 
 > [!NOTE]
 > The first sync can take a few minutes: MongoDB has to start (its EBS volume is created on first use), and the `db-migration` Job runs as a sync hook, so ArgoCD shows "Syncing" until the Job completes. This is normal.
@@ -1047,6 +1049,9 @@ Finally, open your application:
 ```text
 https://kumarharish.in
 ```
+
+<img width="1846" height="966" alt="final_easy_shop" src="https://github.com/user-attachments/assets/4ff8a76f-4e0f-4090-85d4-4c12d4df5b6d" />
+
 
 Your browser should display a secure HTTPS connection.
 
