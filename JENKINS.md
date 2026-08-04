@@ -136,11 +136,18 @@ Install these plugins via "Manage Jenkins" > "Manage Plugins" > "Available":
 ### 2. Pipeline Stages
 
 Our pipeline includes these stages:
-1. Checkout: Cleans workspace and checks out code
-2. Build Docker Images: Builds application containers
-3. Push to Docker Hub: Pushes images to registry
-4. Deploy to Production: Deploys the application
-5. Email Notification: Sends build status
+1. Cleanup Workspace: Starts every build from a clean slate
+2. Checkout: Checks out the latest code from GitHub
+3. Build Docker Images: Builds the app and migration images in parallel
+4. Trivy Scan: Scans the app image for vulnerabilities
+5. Push to Docker Hub: Pushes both images to the registry
+6. Update Kubernetes Manifests: Bumps the image tags in `kubernetes/` and pushes the commit back to the repo (ArgoCD deploys from there)
+7. Email Notification (post): Sends build status on success or failure
+
+> Note: the manifest-update push would re-trigger the webhook and cause an
+> infinite build loop. This is prevented in the job configuration with the
+> "Polling ignores commits from certain users" behaviour (excluded user:
+> `Jenkins`) - see the README, Step 2.8.
 
 ### Logs Location
 

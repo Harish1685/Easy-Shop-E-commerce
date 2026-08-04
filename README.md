@@ -15,10 +15,12 @@ A production-grade, full-stack e-commerce application deployed on AWS EKS using 
 - Prerequisites
 - Step 1 — Provision Infrastructure with Terraform
 - Step 2 — Configure Jenkins (CI)
-- Step 3 — Set Up ArgoCD (CD / GitOps)
-- Step 4 — Configure NGINX Ingress & HTTPS
-- Step 5 — Set Up Monitoring (Prometheus + Grafana)
-- Verifying the Deployment
+- Step 3 — Install ArgoCD (CD / GitOps)
+- Step 4 — Install NGINX Ingress & cert-manager
+- Step 5 — Deploy EasyShop via ArgoCD (Secrets + HTTPS)
+- Step 6 — Set Up Monitoring (Prometheus + Grafana)
+- How the Full CI/CD Flow Works
+- Troubleshooting
 ---
 
 ## 📌 About the Project
@@ -98,7 +100,7 @@ You also need:
 # 🔐 Security Considerations
 
 - Sensitive Kubernetes Secrets are intentionally excluded from version control.
-- The repository provides a `secret.example.yml` template instead of real secrets.
+- The repository provides a `secrets.example.yml` template (at the repo root) instead of real secrets.
 - Before deploying the application, create the Kubernetes Secret using your own values.
 - Container images are scanned using Trivy before deployment.
 - Jenkins credentials are securely stored using the Jenkins Credentials Manager.
@@ -218,9 +220,9 @@ We also use a **DynamoDB table** for state locking so multiple people can't run 
 ## 1.4 Clone This Repository
 
 ```bash
-git clone https://github.com/<your-username>/easyshop.git
+git clone https://github.com/<your-username>/Easy-Shop-E-commerce.git
 
-cd easyshop
+cd Easy-Shop-E-commerce
 ```
 
 ---
@@ -229,19 +231,22 @@ cd easyshop
 
 This key lets you SSH into your Jenkins EC2 instance.
 
+> [!IMPORTANT]
+> Generate the key **inside the `terraform/` folder** — `ec2.tf` reads `terra-key.pub` with a path relative to that folder (`file("terra-key.pub")`). If the key sits at the repo root, `terraform apply` fails with "no such file".
+
 ```bash
-ssh-keygen -f terra-key
+ssh-keygen -f terraform/terra-key
 ```
 
 This creates two files:
 
-- `terra-key` → Your **private key** (never share this)
-- `terra-key.pub` → Your **public key** (Terraform uploads this to AWS)
+- `terraform/terra-key` → Your **private key** (never share this)
+- `terraform/terra-key.pub` → Your **public key** (Terraform uploads this to AWS)
 
 Fix the permissions:
 
 ```bash
-chmod 400 terra-key
+chmod 400 terraform/terra-key
 ```
 
 ---
@@ -281,9 +286,9 @@ Once finished, note the outputs:
 ```text
 Outputs:
 
-ec2_public_ip = "13.234.x.x"
-
-eks_command = "aws eks update-kubeconfig ..."
+jenkins_public_ip    = "54.170.x.x"
+eks_cluster_name     = "easyshop-cluster"
+eks_cluster_endpoint = "https://xxxxxxxx.eks.eu-west-1.amazonaws.com"
 ```
 
 ---
@@ -298,10 +303,10 @@ Every time you push code to GitHub, Jenkins automatically builds a Docker image 
 
 ## 2.1 SSH into Your Jenkins Server
 
-Use the public IP created by Terraform.
+Use the `jenkins_public_ip` output from Terraform and the `terra-key` you generated in Step 1.5.
 
 ```bash
-ssh -i easyshop-key ubuntu@<ec2_public_ip>
+ssh -i terraform/terra-key ubuntu@<jenkins_public_ip>
 ```
 
 ---
@@ -328,6 +333,7 @@ Connect Jenkins to the Kubernetes cluster:
 
 ```bash
 aws eks update-kubeconfig \
+  --region eu-west-1 \
   --name easyshop-cluster
 ```
 
@@ -392,7 +398,7 @@ Go to:
 Search and install:
 
 - ✅ Docker Pipeline → Lets Jenkins build and push Docker images
-- ✅ Pipeline View → Better UI for viewing pipeline stages
+- ✅ Pipeline: Stage View → Better UI for viewing pipeline stages
 
 <img width="1376" height="745" alt="image" src="https://github.com/user-attachments/assets/be5b2e02-1daa-40b5-b38a-7576827b261b" />
 
@@ -526,7 +532,7 @@ Once configured, the pipeline automatically sends:
 **Project URL**
 
 ```text
-https://github.com/<your-username>/easyshop
+https://github.com/<your-username>/Easy-Shop-E-commerce
 ```
 
 ### Triggers
@@ -537,12 +543,25 @@ https://github.com/<your-username>/easyshop
 
 - **Definition:** Pipeline script from SCM
 - **SCM:** Git
-- **Repository URL:** `https://github.com/<your-username>/easyshop`
+- **Repository URL:** `https://github.com/<your-username>/Easy-Shop-E-commerce`
 - **Credentials:** `github-credentials`
 - **Branch:** `main`
 - **Script Path:** `Jenkinsfile`
 
+### Prevent the Pipeline from Triggering Itself (Important)
+
+The last pipeline stage pushes a commit (the updated image tags) back to this **same repository**. That push fires the GitHub webhook again, which would start another build, push another commit, and so on — an **infinite loop**.
+
+The fix is pure job configuration — no pipeline changes needed. The pipeline commits as the git user `Jenkins` (the `git config user.name "Jenkins"` line in the Jenkinsfile), so we tell the job to ignore commits made by that user:
+
+1. Still in the **Pipeline** section, under **SCM → Additional Behaviours**, click **Add** → **Polling ignores commits from certain users**.
+2. **Excluded Users:** `Jenkins`
+3. Uncheck **Lightweight checkout** (just below Script Path). The exclusion is evaluated while polling the repository, and polling can only read commit authors when lightweight checkout is off.
+
 Click **Save**.
+
+> [!NOTE]
+> How this works: the webhook still arrives when Jenkins pushes its own commit, but "GitHub hook trigger" only makes Jenkins *poll* the repository. During polling, Jenkins sees that the only new commit is from the excluded user `Jenkins` and simply doesn't start a build.
 
 ---
 
@@ -575,6 +594,8 @@ You'll see a green tick if the webhook is configured correctly.
 The pipeline should execute:
 
 ```text
+Clean Workspace
+↓
 Checkout Repository
 ↓
 Build Docker Images
@@ -600,9 +621,7 @@ https://hub.docker.com/repositories/<your-username>
 
 # 🚀 Step 3 — Install ArgoCD (CD / GitOps)
 
-Jenkins updates the Kubernetes manifests stored in the GitOps repository.
-
-ArgoCD continuously watches that repository and synchronizes those changes to the cluster.
+This project keeps the application code and the Kubernetes manifests (the `kubernetes/` folder) in a **single repository**. Jenkins updates the manifests there, and ArgoCD continuously watches that folder and synchronizes every change to the cluster — this is the GitOps loop.
 
 ---
 
@@ -643,34 +662,36 @@ All pods should show 1/1 Running ✅
 
 ## 3.2 Expose ArgoCD
 
-Change the service type to **NodePort**:
+By default the `argocd-server` service is `ClusterIP`, which is only reachable from **inside** the cluster — there is no URL you can open in a browser yet.
+
+> [!WARNING]
+> **Why not NodePort?** In this setup the EKS worker nodes live in **private subnets** — they have no public IPs. A NodePort only opens a port *on the nodes themselves*, so there is nothing public to connect to. (Using the Jenkins EC2's public IP won't work either — Jenkins is a separate machine, not part of the cluster.)
+
+The simplest way to reach ArgoCD from your browser is a **LoadBalancer** service. AWS automatically creates a public load balancer that forwards traffic to ArgoCD:
 
 ```bash
 kubectl patch svc argocd-server \
 -n argocd \
--p '{"spec":{"type":"NodePort"}}'
+-p '{"spec": {"type": "LoadBalancer"}}'
 ```
 
-Find the NodePort:
+Wait 2–3 minutes for AWS to provision the load balancer, then get its address:
 
 ```bash
-kubectl get svc \
--n argocd argocd-server
+kubectl get svc argocd-server -n argocd
 ```
 
 Expected output:
 
 ```text
-PORT(S)
-
-80:30943
-443:30463
+NAME            TYPE           EXTERNAL-IP
+argocd-server   LoadBalancer   a1b2c3d4e5.eu-west-1.elb.amazonaws.com
 ```
 
-Open ArgoCD:
+Open ArgoCD using the **EXTERNAL-IP** hostname:
 
 ```text
-https://<ec2_public_ip>:30463
+https://<EXTERNAL-IP>
 ```
 
 Your browser may display a certificate warning.
@@ -680,6 +701,9 @@ Click:
 **Advanced → Proceed**
 
 This is expected because ArgoCD uses a self-signed certificate.
+
+> [!NOTE]
+> This load balancer costs money while it exists, and `terraform destroy` will **not** remove it (Kubernetes created it, not Terraform). When tearing the project down, first patch the service back to `ClusterIP` or delete the `argocd` namespace so AWS removes the load balancer.
 
 ---
 
@@ -703,117 +727,30 @@ Login credentials:
 
 ---
 
-## 3.4 Create Kubernetes Secrets
-
-The application requires Kubernetes Secrets for authentication.
-
-For security reasons, real secrets are **not stored in this repository**. Instead, a `kubernetes/secrets.example.yml` template is provided.
-
-Create your own Kubernetes Secret before deploying the application.
-
-### Create using kubectl
-
-```bash
-kubectl create secret generic easyshop-secrets \
-  --from-literal=NEXTAUTH_SECRET="<YOUR_NEXTAUTH_SECRET>" \
-  --from-literal=JWT_SECRET="<YOUR_JWT_SECRET>" \
-  -n easyshop
-```
-
-### Verify
-
-```bash
-kubectl get secrets -n easyshop
-```
-
-Expected output:
-
-```text
-easyshop-secrets
-```
-
-> [!NOTE]
-> The application deployment references this Secret. If it doesn't exist, the application pods will fail to start.
+ArgoCD is installed and ready. We'll create the EasyShop **application** in Step 5 — after the networking platform (Step 4) is in place, so the app's Ingress and TLS certificate can be satisfied on the very first sync.
 
 ---
 
-## 3.5 Deploy EasyShop via ArgoCD
-
-Click **New App** and configure your GitOps repository to begin continuous deployment.
-
-### Application Name
-
-- **Application Name:** `easyshop`
-- **Project:** `default`
-- **Sync Policy:** `Automatic`
-
-### Source
-
-| Field | Value |
-|-------|-------|
-| **Repo URL** | `https://github.com/<your-username>/easyshop` |
-| **Revision** | `main` |
-| **Path** | `kubernetes` |
-
-### Destination
-
-| Field | Value |
-|-------|-------|
-| **Cluster URL** | `https://kubernetes.default.svc` |
-| **Namespace** | `easyshop` |
-
-Click **Create**.
-
-ArgoCD will start syncing immediately.
-<img width="1840" height="954" alt="argo_easyshop" src="https://github.com/user-attachments/assets/0569dc5a-61c1-42f2-99b9-7cc1102ebb66" />
-
-
----
-
-## 3.5 Verify the Deployment
-
-```bash
-kubectl get pods -n easyshop
-```
-
-Expected output:
-
-```text
-NAME                    READY   STATUS
-easyshop-deployment...  1/1     Running ✅
-mongodb-0               1/1     Running ✅
-db-migration-xxxxx      1/1     Completed ✅
-```
-
-Also verify the MongoDB volume is mounted:
-
-```bash
-kubectl get pvc -n easyshop
-```
-
-Expected output:
-
-```text
-STATUS should be Bound
-
-STORAGECLASS should show gp3 ✅
-```
-
----
-
-# 🌐 Step 4 — Configure NGINX Ingress & HTTPS
+# 🌐 Step 4 — Install NGINX Ingress & cert-manager
 
 ### What This Step Does
 
-This step exposes the EasyShop application to the internet using the NGINX Ingress Controller.
+This step installs the cluster-level networking platform **before** the application is deployed:
 
-An AWS Load Balancer is automatically provisioned to receive external traffic, while the Ingress Controller routes requests to the correct Kubernetes Service inside the cluster.
+- The **NGINX Ingress Controller** receives all external traffic (AWS automatically provisions a Load Balancer for it) and routes requests to the right Service inside the cluster.
+- **cert-manager** automatically requests and renews TLS certificates from Let's Encrypt, so the application is served over HTTPS.
 
-To secure communication, cert-manager automatically requests and renews TLS certificates from Let's Encrypt, allowing the application to be accessed securely over HTTPS.
+> [!IMPORTANT]
+> **Why install this before creating the ArgoCD application?** The `kubernetes/` folder that ArgoCD will sync contains an Ingress and relies on a ClusterIssuer. If ArgoCD deployed the app first:
+>
+> - the ClusterIssuer couldn't be applied (its CRD only exists once cert-manager is installed), so the app would show a **sync error**;
+> - the Ingress would never get an address (no controller exists yet), so the app would hang in **Progressing** instead of turning **Healthy**.
+>
+> Platform first, application last — that way the app turns **Synced + Healthy** on its very first sync.
 
 ---
 
-## 4.1 Install via Helm
+## 4.1 Install the NGINX Ingress Controller
 
 Add the Helm repository:
 
@@ -916,7 +853,7 @@ Example output:
 
 ```text
 NAME                                 TYPE           EXTERNAL-IP
-ingress-nginx-controller             LoadBalancer   ab12cd34.us-east-1.elb.amazonaws.com
+ingress-nginx-controller             LoadBalancer   ab12cd34.eu-west-1.elb.amazonaws.com
 ```
 
 Copy the **EXTERNAL-IP**.
@@ -927,10 +864,11 @@ Copy the **EXTERNAL-IP**.
 
 Log in to your domain registrar and create the following DNS record:
 
-| Type | Value |
+| Field | Value |
 |------|-------|
 | **Type** | CNAME |
-| **Value** | `ab12cd34.us-east-1.elb.amazonaws.com` *(your EXTERNAL-IP)* |
+| **Host / Name** | `@` for the root domain *(if your registrar doesn't allow CNAME on the root, use `www` or an ALIAS record)* |
+| **Value** | `ab12cd34.eu-west-1.elb.amazonaws.com` *(your EXTERNAL-IP)* |
 | **TTL** | 300 |
 
 <img width="1260" height="444" alt="image" src="https://github.com/user-attachments/assets/89c3b57c-b5aa-4cdc-8035-9393c850cd31" />
@@ -952,25 +890,141 @@ Should resolve to an AWS IP ✅
 
 ---
 
-## 4.6 Enable HTTPS
+# 🚀 Step 5 — Deploy EasyShop via ArgoCD
 
-Apply the Ingress manifest.
+The platform is ready: Jenkins builds images, ArgoCD is running, the ingress controller and cert-manager are installed, and DNS points at the load balancer. Now we hand the application over to ArgoCD.
+
+---
+
+## 5.1 Create Kubernetes Secrets
+
+The application needs two secret values at runtime: `NEXTAUTH_SECRET` and `JWT_SECRET`.
+
+**How injection works (the simple version):** the deployment in `kubernetes/easyshop-deployment.yml` has an `envFrom → secretRef: easyshop-secrets` block. Every key in the `easyshop-secrets` Secret automatically becomes an environment variable inside the container. You never put secret values in manifests — you create the Secret once in the cluster, and Kubernetes injects it into the pods.
+
+For security reasons, real secrets are **not stored in this repository**. A reference template `secrets.example.yml` lives at the repo root — deliberately **outside** the `kubernetes/` folder, because ArgoCD applies every YAML file in that folder and a synced template would overwrite your real Secret with placeholder values.
+
+### 1. Create the namespace
+
+The Secret lives in the `easyshop` namespace, so make sure it exists first:
 
 ```bash
-kubectl apply -f kubernetes/ingress.yml
+kubectl apply -f kubernetes/namespace.yml
 ```
 
-The Ingress references the `letsencrypt-prod` ClusterIssuer created earlier.
+### 2. Generate two strong values
 
-cert-manager will automatically:
+```bash
+openssl rand -base64 32
+```
 
-- Request a TLS certificate from Let's Encrypt.
-- Store the certificate as the `easyshop-tls` Kubernetes Secret.
-- Configure the NGINX Ingress Controller to terminate HTTPS traffic.
+Run it twice — one value per secret.
 
-### 4.7 Verify the Certificate
+### 3. Create the Secret with one command
 
-Check that the certificate has been issued successfully.
+```bash
+kubectl create secret generic easyshop-secrets \
+  --from-literal=NEXTAUTH_SECRET="<first-generated-value>" \
+  --from-literal=JWT_SECRET="<second-generated-value>" \
+  -n easyshop
+```
+
+That's the whole thing — no secret files on disk, nothing that can be accidentally committed.
+
+*(Prefer a file? Copy `secrets.example.yml` to `secrets.yml` — which is gitignored — fill in the values, then `kubectl apply -f secrets.yml`.)*
+
+### Verify
+
+```bash
+kubectl get secrets -n easyshop
+```
+
+Expected output:
+
+```text
+easyshop-secrets
+```
+
+> [!NOTE]
+> The application deployment references this Secret. If it doesn't exist, the pods fail with `CreateContainerConfigError`. Create the Secret **before** creating the ArgoCD application in the next section.
+
+---
+
+## 5.2 Create the ArgoCD Application
+
+Click **New App** and configure your GitOps repository to begin continuous deployment.
+
+### Application Name
+
+- **Application Name:** `easyshop`
+- **Project:** `default`
+- **Sync Policy:** `Automatic`
+
+### Source
+
+| Field | Value |
+|-------|-------|
+| **Repo URL** | `https://github.com/<your-username>/Easy-Shop-E-commerce` |
+| **Revision** | `main` |
+| **Path** | `kubernetes` |
+
+### Destination
+
+| Field | Value |
+|-------|-------|
+| **Cluster URL** | `https://kubernetes.default.svc` |
+| **Namespace** | `easyshop` |
+
+Click **Create**.
+
+ArgoCD will start syncing immediately.
+<img width="1840" height="954" alt="argo_easyshop" src="https://github.com/user-attachments/assets/0569dc5a-61c1-42f2-99b9-7cc1102ebb66" />
+
+> [!NOTE]
+> The first sync can take a few minutes: MongoDB has to start (its EBS volume is created on first use), and the `db-migration` Job runs as a sync hook, so ArgoCD shows "Syncing" until the Job completes. This is normal.
+
+---
+
+## 5.3 Verify the Deployment
+
+```bash
+kubectl get pods -n easyshop
+```
+
+Expected output:
+
+```text
+NAME                    READY   STATUS
+easyshop-deployment...  1/1     Running ✅
+mongodb-0               1/1     Running ✅
+db-migration-xxxxx      1/1     Completed ✅
+```
+
+Also verify the MongoDB volume is mounted:
+
+```bash
+kubectl get pvc -n easyshop
+```
+
+Expected output:
+
+```text
+STATUS should be Bound
+
+STORAGECLASS should show gp3 ✅
+```
+
+---
+
+## 5.4 Verify HTTPS
+
+You never apply `kubernetes/ingress.yml` manually — ArgoCD created the Ingress as part of the sync. Because the Ingress carries the `cert-manager.io/cluster-issuer: letsencrypt-prod` annotation, cert-manager automatically:
+
+- Requests a TLS certificate from Let's Encrypt.
+- Stores the certificate as the `easyshop-tls` Kubernetes Secret.
+- Configures the NGINX Ingress Controller to terminate HTTPS traffic.
+
+Give it 1–2 minutes, then check that the certificate has been issued:
 
 ```bash
 kubectl get certificate -n easyshop
@@ -982,7 +1036,7 @@ Expected output:
 READY   True
 ```
 
-Verify that the TLS Secret has been created.
+Verify that the TLS Secret has been created:
 
 ```bash
 kubectl get secret easyshop-tls -n easyshop
@@ -997,11 +1051,11 @@ https://kumarharish.in
 Your browser should display a secure HTTPS connection.
 
 > [!NOTE]
-> The NGINX Ingress Controller and cert-manager are installed once as cluster-level components. After the platform is configured, ArgoCD manages the EasyShop application resources automatically through GitOps.
+> The NGINX Ingress Controller and cert-manager are installed once as cluster-level components. From now on, ArgoCD manages all EasyShop application resources automatically through GitOps.
 
 ---
 
-# 📊 Step 5 — Set Up Monitoring (Prometheus + Grafana)
+# 📊 Step 6 — Set Up Monitoring (Prometheus + Grafana)
 
 ### What Monitoring Does
 
@@ -1011,7 +1065,7 @@ As pods crash, Prometheus collects metrics from your cluster automatically, and 
 
 ---
 
-## 5.1 Install kube-prometheus-stack
+## 6.1 Install kube-prometheus-stack
 
 This Helm chart installs **Prometheus**, **Grafana**, and **pre-built Kubernetes dashboards**.
 
@@ -1051,9 +1105,9 @@ All pods should become Running within 2–3 minutes ✅
 
 ---
 
-## 5.2 Access Grafana
+## 6.2 Access Grafana
 
-Continue by exposing the Grafana service (NodePort, LoadBalancer, or Ingress) depending on your preferred deployment method.
+The simplest way to reach Grafana is to port-forward it from the Jenkins EC2 (the machine already connected to the cluster). Run this **on the Jenkins server**:
 
 ```bash
 kubectl port-forward \
@@ -1077,12 +1131,13 @@ http://<EC2_PUBLIC_IP>:3000
 |----------|----------|
 | `admin` | The password you set during Helm installation |
 
-> [!TIP]
-> Make sure **port 3000** is open in your EC2 Security Group, otherwise Grafana won't be reachable from your browser.
+> [!IMPORTANT]
+> Port **3000** is *not* opened by the Terraform security group. Add an inbound rule first:
+> **EC2 → Security Groups → aws-security-group → Edit inbound rules → Add rule** (Custom TCP, port `3000`, source: your IP). Otherwise Grafana won't be reachable from your browser.
 
 ---
 
-## 5.3 Explore the Pre-Built Dashboards
+## 6.3 Explore the Pre-Built Dashboards
 
 Grafana comes with Kubernetes dashboards already installed.
 
@@ -1102,7 +1157,7 @@ Navigate to:
 
 ---
 
-## 5.4 Import a Custom Dashboard
+## 6.4 Import a Custom Dashboard
 
 Grafana has thousands of community dashboards.
 
@@ -1126,7 +1181,7 @@ Useful dashboards:
 ### Example — Import Dashboard 315
 
 1. Open **Dashboards → Import**
-2. Enter **1680**
+2. Enter **1860**
 3. Click **Load**
 4. Select **Prometheus**
 5. Click **Import**
@@ -1146,18 +1201,19 @@ Here's what happens from end to end every time you push code:
 2. GitHub sends a webhook to Jenkins.
 3. Jenkins:
    - Checks out the latest code.
-   - Builds the Docker image.
-   - Tags the image with the Git commit SHA.
-   - Pushes the image to Docker Hub.
-   - Updates the Kubernetes deployment manifest with the new image tag.
-   - Pushes the updated manifest to the GitOps repository.
-4. ArgoCD detects the GitOps repository change.
-5. ArgoCD syncs the new manifests to your EKS cluster.
-6. Kubernetes performs a rolling update:
+   - Builds the Docker images (app + migration).
+   - Tags them with the Jenkins build number.
+   - Pushes the images to Docker Hub.
+   - Updates the Kubernetes manifests with the new image tag.
+   - Pushes the updated manifests back to this same repository (as git user `Jenkins`).
+4. GitHub fires the webhook again for that commit — but the job ignores commits from the `Jenkins` user (configured in Step 2.8), so **no new build starts and no infinite loop happens**.
+5. ArgoCD detects the manifest change in the `kubernetes/` folder.
+6. ArgoCD syncs the new manifests to your EKS cluster.
+7. Kubernetes performs a rolling update:
    - Starts new pods with the new image.
    - Waits for them to become healthy.
    - Terminates the old pods after the new ones are ready.
-7. Users begin accessing the new version with **zero downtime**. ✅
+8. Users begin accessing the new version with **zero downtime**. ✅
 
 ---
 
@@ -1204,6 +1260,9 @@ Check deployment logs:
 kubectl logs -n easyshop deployment/easyshop-deployment --tail=30
 ```
 
+> [!TIP]
+> If everything is Healthy except the **Ingress** (stuck in Progressing), the NGINX Ingress Controller probably isn't installed yet — it must exist before the Ingress can get an address (Step 4). Likewise, a sync error on the ClusterIssuer means cert-manager isn't installed yet.
+
 ---
 
 ## Domain Isn't Loading
@@ -1230,6 +1289,19 @@ kubectl logs -n ingress-nginx deployment/ingress-nginx-controller --tail=20
 > Make sure your DNS **CNAME** record points to the correct AWS Load Balancer hostname and that DNS propagation has completed.
 
 ---
+
+## Pipeline Keeps Triggering Itself (Infinite Loop)
+
+The last pipeline stage pushes a commit back to this repository, and that push fires the webhook again. The loop is prevented by job configuration (Step 2.8) — if builds keep chaining, check:
+
+1. The job has the **Polling ignores commits from certain users** behaviour with excluded user `Jenkins` — spelled exactly like the `git config user.name "Jenkins"` line in the Jenkinsfile.
+2. **Lightweight checkout** is unchecked — when it's on, polling can't read commit authors and the exclusion is silently ignored.
+
+To stop a loop that's already running: click **Abort** on the running build, fix the two settings above, then push a normal commit and confirm only one build starts.
+
+## ArgoCD Sync Fails on the Migration Job ("field is immutable")
+
+Kubernetes Jobs can't be modified after creation. `kubernetes/migration-job.yml` therefore carries two ArgoCD hook annotations (`argocd.argoproj.io/hook: Sync` and `hook-delete-policy: BeforeHookCreation`) that make ArgoCD delete the finished Job and run a fresh one on every sync. If those annotations are removed, the first image-tag update afterwards fails to sync with a "field is immutable" error.
 
 ## Jenkins pipeline fails at Docker push
 1. Check the credential ID in Jenkins is exactly: docker-hub-credentials
